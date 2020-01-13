@@ -2,6 +2,7 @@ package com.example.gnb.repository
 
 import androidx.lifecycle.liveData
 import com.example.gnb.api.WebService
+import com.example.gnb.api.model.ApiErrorResponse
 import com.example.gnb.api.model.ApiResponse
 import com.example.gnb.api.model.Conversion
 import com.example.gnb.api.model.Transaction
@@ -11,6 +12,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import org.jgrapht.alg.shortestpath.DijkstraShortestPath
 import org.jgrapht.graph.DefaultDirectedWeightedGraph
+import java.io.IOException
 import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -25,6 +27,7 @@ class MainRepository @Inject constructor(private val webService: WebService) {
     companion object {
         const val EUR_CURRENCY = "EUR"
         const val SCALE = 2
+        const val UNKNOWN_HOST = 503
     }
 
     var transactionList: List<Transaction>? = null
@@ -36,9 +39,13 @@ class MainRepository @Inject constructor(private val webService: WebService) {
      * @return the response from the service wrapped in an [ApiResponse]
      */
     fun getConversions() = liveData(Dispatchers.IO) {
-        emit(coroutineScope {
-            val currencies = async { webService.getConversions() }
-            return@coroutineScope ApiResponse.create(currencies.await())
+        emit(try {
+            coroutineScope {
+                val currencies = async { webService.getConversions() }
+                return@coroutineScope ApiResponse.create(currencies.await())
+            }
+        } catch (ex: IOException) {
+            ApiErrorResponse<List<Conversion>>(UNKNOWN_HOST, ex.message!!)
         })
     }
 
@@ -47,9 +54,13 @@ class MainRepository @Inject constructor(private val webService: WebService) {
      * @return the response from the service wrapped in an [ApiResponse]
      */
     fun getTransactions() = liveData(Dispatchers.IO) {
-        emit(coroutineScope {
-            val transactions = async { webService.getTransactions() }
-            return@coroutineScope ApiResponse.create(transactions.await())
+        emit(try {
+            coroutineScope {
+                val transactions = async { webService.getTransactions() }
+                return@coroutineScope ApiResponse.create(transactions.await())
+            }
+        } catch (ex: IOException) {
+            ApiErrorResponse<List<Transaction>>(UNKNOWN_HOST, ex.message!!)
         })
     }
 
